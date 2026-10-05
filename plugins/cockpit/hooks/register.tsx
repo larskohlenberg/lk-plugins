@@ -20,11 +20,18 @@ const pendingHandoff = atom({ plugin: 'cockpit', key: 'pendingHandoff' } as cons
 const HANDOFF_DIR = '.claude/handoffs'
 const HANDOFF_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000
 const CONSUMED_KEY = 'consumedHandoffs'
+// Only handoffs this plugin saw being written are ever offered: a file that
+// arrived with a cloned repo is never turned into a prompt.
+const KNOWN_KEY = 'knownHandoffs'
+const MAX_SUGGESTION_CHARS = 120
 
 const HANDOFF_PROMPT =
   'Bitte führe den handoff-Skill aus. Nenne am Ende in einer eigenen Zeile den Pfad der Datei als `HANDOFF: <absoluter Pfad>`.'
 // The path runs to the end of its line: project folders may contain spaces.
 const HANDOFF_LINE = /^HANDOFF:\s*`?(.+?)`?\s*$/m
+// A handoff path as the skill writes it: absolute, one line, a Markdown file.
+const isHandoffPath = (path: string) =>
+  path.length < 500 && /^(\/|[A-Za-z]:[\\/])/.test(path) && /handoff[^\\/]*\.md$/i.test(path)
 const continuePrompt = (path: string) =>
   `Lies die Handoff-Datei ${path} und setze die Arbeit dort fort.`
 
@@ -48,6 +55,16 @@ async function consumedHandoffs($: Engine): Promise<string[]> {
   return Array.isArray(list) ? (list as string[]) : []
 }
 
+async function storedList($: Engine, key: string): Promise<string[]> {
+  const list = await $.store.get(key)
+  return Array.isArray(list) ? (list as string[]) : []
+}
+
+async function rememberHandoff($: Engine, path: string) {
+  const list = await storedList($, KNOWN_KEY)
+  await $.store.set(KNOWN_KEY, [...list.filter(p => p !== path), path].slice(-200))
+}
+
 async function markConsumed($: Engine, path: string) {
   const list = await consumedHandoffs($)
   await $.store.set(CONSUMED_KEY, [...list.filter(p => p !== path), path].slice(-200))
@@ -59,11 +76,12 @@ async function findPendingHandoff($: Engine): Promise<PendingHandoff | null> {
   const dir = `${cwd}/${HANDOFF_DIR}`
   if (!isProjectDir(cwd) || !(await $.fs.exists(dir))) return null
   const consumed = await consumedHandoffs($)
+  const known = await storedList($, KNOWN_KEY)
   const now = await $.clock.now()
   const newest = (await $.fs.list(dir))
     .filter(f => f.kind === 'file' && f.name.endsWith('.md'))
     .map(f => ({ path: `${dir}/${f.name}`, mtimeMs: f.mtimeMs }))
-    .filter(f => now - f.mtimeMs < HANDOFF_MAX_AGE_MS && !consumed.includes(f.path))
+    .filter(f => now - f.mtimeMs < HANDOFF_MAX_AGE_MS && known.includes(f.path) && !consumed.includes(f.path))
     .sort((a, b) => b.mtimeMs - a.mtimeMs)[0]
   return newest ?? null
 }
@@ -79,7 +97,7 @@ async function suggest($: Engine, prompt: string, answer: string) {
   const lines = r.text
     .split('\n')
     .map((l: string) => l.replace(/^[\s\-*\d.)]+/, '').trim())
-    .filter((l: string) => l !== '')
+    .filter((l: string) => l !== '' && l.length <= MAX_SUGGESTION_CHARS)
     .slice(0, 3)
   await update($, suggestions, () => lines)
 }
@@ -89,6 +107,8 @@ export const register: Register = on => {
   let weightedTokens = 0
   let lastCostUsd = 0
   let warnedFor = 0
+  // The HANDOFF line is read only from the answer to our own handoff prompt.
+  let isAwaitingHandoff = false
 
   on('session.start', async ($, e, next) => {
     await $.command.register({
@@ -148,11 +168,13 @@ export const register: Register = on => {
     if (e.agentId === undefined && !e.isAborted) {
       const now = await $.clock.now()
       await update($, meter, m => (m === null ? m : { ...m, lastActivity: now }))
-      const found = HANDOFF_LINE.exec(e.answer)
-      if (found) {
-        await update($, handoffPath, () => found[1])
-        // Written by this session: not a handoff to offer back to it.
-        await markConsumed($, found[1])
+      if (isAwaitingHandoff) {
+        isAwaitingHandoff = false
+        const path = HANDOFF_LINE.exec(e.answer)?.[1]
+        if (path && isHandoffPath(path) && (await $.fs.exists(path))) {
+          await update($, handoffPath, () => path)
+          await rememberHandoff($, path)
+        }
       }
       if (e.answer.trim() !== '' && (await read($, isNextStepsOn))) {
         void suggest($, lastPrompt, e.answer)
@@ -222,7 +244,10 @@ export const register: Register = on => {
             key="handoff"
             label="handoff"
             hotkey="h"
-            onPress={() => $.prompt.submit({ text: HANDOFF_PROMPT, asUser: true })}
+            onPress={() => {
+              isAwaitingHandoff = true
+              return $.prompt.submit({ text: HANDOFF_PROMPT, asUser: true })
+            }}
           />
           {path !== null && (
             <Button key="clear-continue" label="clear & continue" hotkey="c" onPress={() => clearAndContinue(path)} />
