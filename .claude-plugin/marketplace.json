@@ -1,0 +1,14 @@
+{
+  "name": "lk-plugins",
+  "owner": { "name": "Lars Kohlenberg" },
+  "metadata": { "description": "Persönliche Claude-Code-Plugins", "version": "1.0.0" },
+  "plugins": [
+    {
+      "name": "cockpit",
+      "description": "Cache-Keeper, Next Steps, Handoff-Angebot und handoff-Skill",
+      "version": "0.2.0",
+      "author": { "name": "Lars Kohlenberg" },
+      "source": "./plugins/cockpit"
+    }
+  ]
+}

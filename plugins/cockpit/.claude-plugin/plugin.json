@@ -1,0 +1,1 @@
+{ "name": "cockpit", "version": "0.2.0", "description": "Cache-Keeper, Next Steps und Handoff-Angebot als Leiste über dem Eingabefeld", "author": { "name": "Lars Kohlenberg" }, "types": "./types/index.d.ts" }
