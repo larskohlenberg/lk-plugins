@@ -9,7 +9,14 @@ claude plugin marketplace add larskohlenberg/lk-plugins
 claude plugin install cockpit@lk-plugins
 ```
 
-Updates: `claude plugin update cockpit@lk-plugins`
+## Update (wenn eine neue Version im Repo liegt)
+
+```bash
+claude plugin marketplace update lk-plugins
+claude plugin update cockpit@lk-plugins
+```
+
+Der erste Befehl holt den neuesten Stand aus GitHub, der zweite installiert die neue Version. Danach Claude Code neu starten.
 
 ## cockpit
 
