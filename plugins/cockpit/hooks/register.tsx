@@ -11,8 +11,6 @@ const WEIGHT = { input: 1, cacheWrite: 2, cacheRead: 0.1, output: 5 }
 
 const meter = atom({ plugin: 'cockpit', key: 'meter' } as const, null)
 const tick = atom({ plugin: 'cockpit', key: 'tick' } as const, 0)
-const suggestions = atom({ plugin: 'cockpit', key: 'suggestions' } as const, [])
-const isNextStepsOn = atom({ plugin: 'cockpit', key: 'isNextStepsOn' } as const, true)
 const handoffPath = atom({ plugin: 'cockpit', key: 'handoffPath' } as const, null)
 const pendingHandoff = atom({ plugin: 'cockpit', key: 'pendingHandoff' } as const, null)
 
@@ -23,7 +21,6 @@ const CONSUMED_KEY = 'consumedHandoffs'
 // Only handoffs this plugin saw being written are ever offered: a file that
 // arrived with a cloned repo is never turned into a prompt.
 const KNOWN_KEY = 'knownHandoffs'
-const MAX_SUGGESTION_CHARS = 120
 
 const HANDOFF_PROMPT =
   'Bitte führe den handoff-Skill aus. Nenne am Ende in einer eigenen Zeile den Pfad der Datei als `HANDOFF: <absoluter Pfad>`.'
@@ -34,10 +31,6 @@ const isHandoffPath = (path: string) =>
   path.length < 500 && /^(\/|[A-Za-z]:[\\/])/.test(path) && /handoff[^\\/]*\.md$/i.test(path)
 const continuePrompt = (path: string) =>
   `Lies die Handoff-Datei ${path} und setze die Arbeit dort fort.`
-
-const NEXT_SYSTEM = `Du schlägst dem Nutzer eines KI-Assistenten die nächsten sinnvollen Schritte vor.
-Antworte mit 2 oder 3 Zeilen, jede ein konkreter, kurzer Auftrag (max. 8 Wörter) in der Sprache des Gesprächs,
-formuliert als Anweisung an den Assistenten. Keine Nummerierung, keine Erklärung. Wenn nichts Sinnvolles folgt, antworte mit NONE.`
 
 const formatMinutes = (ms: number) => `${Math.max(0, Math.ceil(ms / 60000))}m`
 const formatTokens = (n: number) => (n >= 1000 ? `${Math.round(n / 1000)}k` : `${n}`)
@@ -86,24 +79,7 @@ async function findPendingHandoff($: Engine): Promise<PendingHandoff | null> {
   return newest ?? null
 }
 
-async function suggest($: Engine, prompt: string, answer: string) {
-  const r = await $.model.complete({
-    model: 'haiku',
-    system: NEXT_SYSTEM,
-    prompt: `Letzte Anfrage des Nutzers:\n${prompt.slice(-2000)}\n\nAntwort des Assistenten:\n${answer.slice(-4000)}`,
-    maxTokens: 200,
-  })
-  if (!r.isAnswered || r.text.trim() === 'NONE') return
-  const lines = r.text
-    .split('\n')
-    .map((l: string) => l.replace(/^[\s\-*\d.)]+/, '').trim())
-    .filter((l: string) => l !== '' && l.length <= MAX_SUGGESTION_CHARS)
-    .slice(0, 3)
-  await update($, suggestions, () => lines)
-}
-
 export const register: Register = on => {
-  let lastPrompt = ''
   let weightedTokens = 0
   let lastCostUsd = 0
   let warnedFor = 0
@@ -111,10 +87,6 @@ export const register: Register = on => {
   let isAwaitingHandoff = false
 
   on('session.start', async ($, e, next) => {
-    await $.command.register({
-      name: 'nextsteps',
-      description: 'Next-Steps-Vorschläge ein- oder ausschalten (on|off)',
-    })
     const found = await findPendingHandoff($)
     await update($, pendingHandoff, () => found)
     $.clock.every(30_000, async () => {
@@ -129,27 +101,6 @@ export const register: Register = on => {
       }
       await update($, tick, n => n + 1)
     })
-
-    return next(e)
-  })
-
-  on('command.run', { command: 'nextsteps' }, async ($, e) => {
-    const arg = e.args.trim().toLowerCase()
-    const isOn = arg === 'on' ? true : arg === 'off' ? false : !(await read($, isNextStepsOn))
-    await update($, isNextStepsOn, () => isOn)
-    if (!isOn) await update($, suggestions, () => [])
-
-    return { text: `Next Steps ${isOn ? 'an' : 'aus'}.` }
-  })
-
-  on('prompt.submit', async ($, e, next) => {
-    await update($, suggestions, () => [])
-
-    return next(e)
-  })
-
-  on('turn.start', ($, e, next) => {
-    if (e.text) lastPrompt = e.text
 
     return next(e)
   })
@@ -175,9 +126,6 @@ export const register: Register = on => {
           await update($, handoffPath, () => path)
           await rememberHandoff($, path)
         }
-      }
-      if (e.answer.trim() !== '' && (await read($, isNextStepsOn))) {
-        void suggest($, lastPrompt, e.answer)
       }
     }
 
@@ -209,11 +157,10 @@ export const register: Register = on => {
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey) return next(e)
     const m: Meter | null = await read($, meter)
-    const steps = await read($, suggestions)
     await read($, tick)
     const path = await read($, handoffPath)
     const pending = await read($, pendingHandoff)
-    if (m === null && steps.length === 0 && pending === null) return next(e)
+    if (m === null && pending === null) return next(e)
 
     const { Box, Button, Text } = $.ui.resolve(e)
     const now = await $.clock.now()
@@ -260,7 +207,6 @@ export const register: Register = on => {
     const clearAndContinue = async (file: string) => {
       await $.command.run({ command: 'clear' })
       await update($, handoffPath, () => null)
-      await update($, suggestions, () => [])
       await update($, meter, () => null)
       await $.prompt.submit({ text: continuePrompt(file), asUser: true })
     }
@@ -268,11 +214,6 @@ export const register: Register = on => {
     const resume = async (file: string) => {
       await markConsumed($, file)
       await $.prompt.submit({ text: continuePrompt(file), asUser: true })
-    }
-
-    const pick = async (text: string) => {
-      await update($, suggestions, () => [])
-      await $.prompt.submit({ text, asUser: true })
     }
 
     return (
@@ -292,21 +233,6 @@ export const register: Register = on => {
           </Box>
         )}
         {cacheRow}
-        {steps.length > 0 && !e.props.isWorking && (
-          <Box flexDirection="column">
-            <Text dimColor>next:</Text>
-            {steps.map((s: string, i: number) => (
-              <Button key={`step-${i}`} label={s} hotkey={String(i + 1)} onPress={() => pick(s)} />
-            ))}
-            <Button
-              key="dismiss"
-              label="dismiss"
-              hotkey="0"
-              role="dismiss"
-              onPress={() => update($, suggestions, () => [])}
-            />
-          </Box>
-        )}
       </Box>
     )
   })

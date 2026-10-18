@@ -13,8 +13,6 @@ declare module 'claude-code' {
     cockpit: {
       meter: Meter | null
       tick: number
-      suggestions: string[]
-      isNextStepsOn: boolean
       handoffPath: string | null
       pendingHandoff: PendingHandoff | null
     }

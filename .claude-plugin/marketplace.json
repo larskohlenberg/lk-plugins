@@ -5,8 +5,8 @@
   "plugins": [
     {
       "name": "cockpit",
-      "description": "Cache-Keeper, Next Steps, Handoff-Angebot und handoff-Skill",
-      "version": "0.2.1",
+      "description": "Cache-Keeper, Handoff-Angebot und handoff-Skill",
+      "version": "0.3.0",
       "author": { "name": "Lars Kohlenberg" },
       "source": "./plugins/cockpit"
     }
