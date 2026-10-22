@@ -1,5 +1,5 @@
 import { atom, read, update } from 'claude-code'
-import type { Engine, Register } from 'claude-code'
+import type { EngineInterface as Engine, Register } from 'claude-code'
 
 import type { Meter, PendingHandoff } from '../types'
 
@@ -29,6 +29,8 @@ const HANDOFF_LINE = /^HANDOFF:\s*`?(.+?)`?\s*$/m
 // A handoff path as the skill writes it: absolute, one line, a Markdown file.
 const isHandoffPath = (path: string) =>
   path.length < 500 && /^(\/|[A-Za-z]:[\\/])/.test(path) && /handoff[^\\/]*\.md$/i.test(path)
+const WRAP_UP_PROMPT =
+  'Sind wir fertig? Prüfe, ob in dieser Session noch etwas offen ist oder dir etwas auffällt. Wenn nichts offen ist, archiviere diese Session. Sonst nenne, was offen ist, und archiviere nicht.'
 const continuePrompt = (path: string) =>
   `Lies die Handoff-Datei ${path} und setze die Arbeit dort fort.`
 
@@ -195,6 +197,12 @@ export const register: Register = on => {
               isAwaitingHandoff = true
               return $.prompt.submit({ text: HANDOFF_PROMPT, asUser: true })
             }}
+          />
+          <Button
+            key="wrap-up"
+            label="fertig"
+            hotkey="f"
+            onPress={() => $.prompt.submit({ text: WRAP_UP_PROMPT, asUser: true })}
           />
           {path !== null && (
             <Button key="clear-continue" label="clear & continue" hotkey="c" onPress={() => clearAndContinue(path)} />
