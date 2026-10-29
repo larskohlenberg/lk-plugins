@@ -359,31 +359,17 @@ export const register: Register = on => {
     const now = await $.clock.now()
     // Other mods' bands join the buttons instead of being hidden.
     const below = await next(e)
-    // No tooltips for mod buttons: hovering one reveals its hint at the row's start.
-    const withHint = (id: string, button: unknown) => (
-      <Box key={`hover-${id}`} hover={{ scope: `hint-${id}` }}>
-        {button}
-      </Box>
-    )
-    const hint = (id: string, text: string) => (
-      <Box display="none" hover={{ scope: `hint-${id}`, display: 'flex' }} flexShrink={0}>
-        <Text>{text} </Text>
-      </Box>
-    )
-    const dictationHint = hint('dictation', `Diktat-Aufbereitung ${isDictationOn ? 'ausschalten' : 'einschalten'} (d)`)
-    const dictationButton = withHint(
-      'dictation',
+    const dictationButton = (
       <Button
         key="dictation"
         label={isDictationOn ? '🎙' : '🔇'}
         hotkey="d"
         onPress={() => setDictationOn($, !isDictationOn)}
-      />,
+      />
     )
     if (m === null && pending === null) {
       return (
         <Box gap={1}>
-          {dictationHint}
           {dictationButton}
           {below}
         </Box>
@@ -402,10 +388,6 @@ export const register: Register = on => {
       cacheRow = (
         <Box justifyContent="space-between">
           <Box flexGrow={1} flexShrink={1}>
-            {dictationHint}
-            {hint('handoff', 'Handoff schreiben (h)')}
-            {hint('wrap-up', 'Session abschließen (f)')}
-            {hint('clear-continue', 'Clear & mit Handoff weitermachen (c)')}
             <Text wrap="truncate-end">
               <Text color={cacheColor}>● {isWarm ? formatMinutes(left) : ''}</Text>
               <Text dimColor>
@@ -417,32 +399,24 @@ export const register: Register = on => {
           <Box flexShrink={0} gap={1} marginLeft={2}>
           {below}
           {dictationButton}
-          {withHint(
-            'handoff',
-            <Button
-              key="handoff"
-              label="↪"
-              hotkey="h"
-              onPress={() => {
-                isAwaitingHandoff = true
-                return $.prompt.submit({ text: HANDOFF_PROMPT, asUser: true })
-              }}
-            />,
+          <Button
+            key="handoff"
+            label="↪"
+            hotkey="h"
+            onPress={() => {
+              isAwaitingHandoff = true
+              return $.prompt.submit({ text: HANDOFF_PROMPT, asUser: true })
+            }}
+          />
+          <Button
+            key="wrap-up"
+            label="✓"
+            hotkey="f"
+            onPress={() => $.prompt.submit({ text: WRAP_UP_PROMPT, asUser: true })}
+          />
+          {path !== null && (
+            <Button key="clear-continue" label="⟳" hotkey="c" onPress={() => clearAndContinue(path)} />
           )}
-          {withHint(
-            'wrap-up',
-            <Button
-              key="wrap-up"
-              label="✓"
-              hotkey="f"
-              onPress={() => $.prompt.submit({ text: WRAP_UP_PROMPT, asUser: true })}
-            />,
-          )}
-          {path !== null &&
-            withHint(
-              'clear-continue',
-              <Button key="clear-continue" label="⟳" hotkey="c" onPress={() => clearAndContinue(path)} />,
-            )}
           </Box>
         </Box>
       )
@@ -465,19 +439,14 @@ export const register: Register = on => {
         {pending !== null && (
           <Box justifyContent="space-between">
             <Box flexGrow={1} flexShrink={1}>
-              {hint('resume', 'Handoff fortsetzen (w)')}
-              {hint('ignore', 'Handoff ignorieren (x)')}
               <Text wrap="truncate-middle">
                 <Text color="cyan">↻ Handoff vom {formatWhen(pending.mtimeMs)}</Text>
                 <Text dimColor> {pending.path.split('/').pop()}</Text>
               </Text>
             </Box>
             <Box flexShrink={0} gap={1} marginLeft={2}>
-              {withHint('resume', <Button key="resume" label="▶" hotkey="w" onPress={() => resume(pending.path)} />)}
-              {withHint(
-                'ignore',
-                <Button key="ignore" label="✕" hotkey="x" onPress={() => markConsumed($, pending.path)} />,
-              )}
+              <Button key="resume" label="▶" hotkey="w" onPress={() => resume(pending.path)} />
+              <Button key="ignore" label="✕" hotkey="x" onPress={() => markConsumed($, pending.path)} />
             </Box>
           </Box>
         )}

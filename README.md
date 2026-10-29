@@ -32,7 +32,6 @@ Leiste über dem Eingabefeld (Desktop-App und Terminal):
 - **[h] ↪ Handoff / [c] ⟳ clear & continue**: Handoff schreiben, dann `/clear` und in frischer Session fortsetzen.
 - **[f] ✓ fertig**: Session abschließen.
 - **[d] 🎙 / 🔇 Diktat-Aufbereitung**: Diktierte Prompts (ab 40 Zeichen) schreibt Haiku vor dem Senden in einen klaren Prompt um; eingefügter Code und Logs bleiben unverändert. Der Knopf schaltet sie an (🎙) oder aus (🔇), ebenso `/dictation-cleanup on | off | status`. Die Einstellung bleibt über Sessions erhalten. Wortliste und bekannte Hörfehler stehen oben im Diktat-Teil von `hooks/register.tsx` (`VOCABULARY`, `MISHEARINGS`).
-- Fährst du mit der Maus über einen Knopf, zeigt die Leiste links, was er tut (statt Tooltip).
 - Knöpfe anderer Mods erscheinen links neben diesen Knöpfen.
 - **Handoff-Angebot**: Beim Start einer Session in einem Projekt wird der neueste ungenutzte Handoff aus `.claude/handoffs/` angeboten ([w] ▶ weitermachen, [x] ✕ ignorieren).
 - **handoff-Skill**: speichert in Projekten unter `.claude/handoffs/`, sonst im Temp-Ordner.
