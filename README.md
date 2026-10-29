@@ -1,6 +1,12 @@
 # lk-plugins
 
-Persönlicher Marktplatz für Claude-Code-Plugins.
+Persönlicher Marktplatz für Claude-Code-Plugins. Öffentlich: Jede und jeder kann sie installieren und nutzen (MIT-Lizenz).
+
+In der Desktop-App, wo `/plugin` nicht läuft: **+** neben dem Eingabefeld → **Plugins** → **Add marketplace** mit `larskohlenberg/lk-plugins` → **Add plugin**.
+
+Braucht eine Claude-Code-Version mit Mod-Unterstützung (gebaut und getestet mit 2.1.309); die Mod-Schnittstelle ist Early Access und kann sich ändern.
+
+> Früher eigenständig: [dictation-cleanup](https://github.com/larskohlenberg/dictation-cleanup) ist jetzt Teil von **cockpit**.
 
 ## Installation (einmal pro Rechner)
 
