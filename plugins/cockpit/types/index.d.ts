@@ -15,6 +15,7 @@ declare module 'claude-code' {
       tick: number
       handoffPath: string | null
       pendingHandoff: PendingHandoff | null
+      dictationOn: boolean
     }
   }
 }

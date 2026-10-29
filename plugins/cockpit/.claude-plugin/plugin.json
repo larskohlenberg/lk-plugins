@@ -1,1 +1,1 @@
-{ "name": "cockpit", "version": "0.4.0", "description": "Cache-Keeper, Handoff-Angebot und Fertig-Knopf als Leiste über dem Eingabefeld", "author": { "name": "Lars Kohlenberg" }, "types": "./types/index.d.ts" }
+{"name": "cockpit", "version": "0.5.0", "description": "Cache-Keeper, Handoff, Fertig-Knopf und Diktat-Aufbereitung als Leiste über dem Eingabefeld", "author": {"name": "Lars Kohlenberg"}, "types": "./types/index.d.ts"}
