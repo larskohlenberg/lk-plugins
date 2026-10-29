@@ -147,7 +147,7 @@ The message was usually spoken: it has filler words, restarts, self-corrections,
 
 Rewrite it so that:
 - every distinct request, fact, condition, constraint, example and detail is kept — never drop or invent content
-- self-corrections keep only the final version ("nee warte", "ich meine", "also eigentlich", "wait no")
+- self-corrections keep only the final version: when the speaker says something and then replaces it ("nein", "nee", "nee warte", "äh", "ich meine", "also eigentlich", "oder besser", "sorry", "korrigiere", "wait no"), the replaced words are dropped, not combined — e.g. "diese vier, nein, diese fünf Faktoren" → "diese fünf Faktoren", "am Montag, äh, Dienstag" → "am Dienstag". A replaced word is not content to keep.
 - repetitions of the same thought become one statement
 - related points are grouped; the main request comes first
 - real contradictions that the speaker did not resolve are kept and marked as an open question, never decided by you

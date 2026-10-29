@@ -6,7 +6,7 @@
     {
       "name": "cockpit",
       "description": "Cache-Keeper, Handoff-Angebot, Fertig-Knopf, Diktat-Aufbereitung und handoff-Skill",
-      "version": "0.5.3",
+      "version": "0.5.4",
       "author": { "name": "Lars Kohlenberg" },
       "source": "./plugins/cockpit"
     }
