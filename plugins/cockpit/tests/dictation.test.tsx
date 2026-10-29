@@ -146,3 +146,30 @@ test('the 🎙 button in the cockpit band shows the state and flips it', async (
     await ui.unmount()
   }
 })
+
+const NOTE = 'The session started without a project folder selected, so the working directory is a scratch workspace.\n\n**Branch:** call `propose_branch`. Ask this only through the tool, never in prose.'
+
+test("the app's note before the first prompt reaches Claude untouched", async ($, on) => {
+  const asked: string[] = []
+  on('model.complete', (_, e) => {
+    asked.push(String(e.prompt))
+    return { value: { isAnswered: true, text: '<message>\nIch brauche bis Donnerstag die Zahlen für Q3.\n</message>', usage } }
+  })
+  on('clock.now', () => ({ value: 0 }))
+  store(on)
+  on('prompt.submit', (_, e) => ({ text: e.text }))
+  const submit = (text: string) => $.prompt.submit({ text, origin: { kind: 'composer' }, wait: false })
+
+  // A short prompt after the note passes as typed: nothing is sent to Haiku.
+  expect((await submit(`${NOTE}\n\ntest`)).text).toBe(`${NOTE}\n\ntest`)
+  expect(asked).toHaveLength(0)
+
+  // A dictation after the note is rewritten alone; the echoed wrapper is dropped.
+  expect((await submit(`${NOTE}\n\n${DUMP}`)).text).toBe(`${NOTE}\n\nIch brauche bis Donnerstag die Zahlen für Q3.`)
+  expect(asked[0]).not.toContain('scratch workspace')
+
+  // A note whose end is missing (the app changed it): nothing is rewritten.
+  const changed = `The session started without a project folder selected. ${DUMP}`
+  expect((await submit(changed)).text).toBe(changed)
+  expect(asked).toHaveLength(1)
+})

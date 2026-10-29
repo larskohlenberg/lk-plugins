@@ -114,6 +114,26 @@ function isProse(text: string): boolean {
   return symbols / t.length < 0.02 && letters / t.replace(/\s/g, '').length > 0.8
 }
 
+// Notes the desktop app puts in front of a session's first prompt, as first → last
+// sentence. They reach Claude untouched; only the words after them are spoken.
+const APP_NOTES = [
+  { start: 'The session started without a project folder', end: 'never in prose.' },
+]
+
+// Splits a leading app note off; `null` when a note's end isn't found, so the
+// prompt passes as typed rather than risk rewriting the app's instructions.
+function splitAppNote(text: string): { note: string; rest: string } | null {
+  const lead = text.length - text.trimStart().length
+  for (const { start, end } of APP_NOTES) {
+    if (!text.startsWith(start, lead)) continue
+    const at = text.indexOf(end, lead)
+    if (at < 0) return null
+    const cut = at + end.length
+    return { note: text.slice(0, cut), rest: text.slice(cut) }
+  }
+  return { note: '', rest: text }
+}
+
 function unwrapDictation(text: string): string {
   const blocks = text.match(PASTE) ?? []
   if (blocks.length === 0 || text.replace(PASTE, '').trim()) return text
@@ -186,8 +206,10 @@ function registerDictation(on: Parameters<Register>[0]) {
     if (e.command || e.isMeta || !isOwn) return next(e)
     if ((await $.store.get(ENABLED)) === false) return next(e)
 
+    const split = splitAppNote(e.text)
+    if (!split) return next(e)
     const pastes: string[] = []
-    const spoken = unwrapDictation(e.text).replace(PASTE, block => {
+    const spoken = unwrapDictation(split.rest).replace(PASTE, block => {
       pastes.push(block)
       return `[[PASTE_${pastes.length}]]`
     })
@@ -219,7 +241,8 @@ function registerDictation(on: Parameters<Register>[0]) {
       return next(e)
     }
 
-    let rewritten = r.text.trim()
+    // Haiku sometimes echoes the <message> wrapper it was given.
+    let rewritten = r.text.trim().replace(/^<message>\s*([\s\S]*?)\s*<\/message>$/, '$1').trim()
     const placeholdersKept = pastes.every(
       (_, i) => rewritten.split(`[[PASTE_${i + 1}]]`).length === 2,
     )
@@ -240,7 +263,7 @@ function registerDictation(on: Parameters<Register>[0]) {
       .split(/\n+/)
       .filter(line => line.trim())
       .forEach(line => $.ui.log(`    ${line}`))
-    return next({ ...e, text: rewritten })
+    return next({ ...e, text: split.note ? `${split.note}\n\n${rewritten}` : rewritten })
   }).catch(($, e, next) => next(e)) // a failed rewrite never blocks the prompt
 }
 
